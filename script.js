@@ -2,6 +2,19 @@
 // take whatever you want from this code, literally all of it is just trial and error + documentation stuff.
 // feline supremacy.
 
+// saving and loading
+function saveSystemSettings() {
+  localStorage.setItem("system_config", JSON.stringify(SYSTEM_CONFIG));
+}
+
+function loadSystemSettings() {
+  const saved = localStorage.getItem("system_config");
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    Object.assign(SYSTEM_CONFIG, parsed);
+  }
+}
+
 // constants
 const TEXT_EL = document.getElementById("text");
 const CURSOR_EL = document.getElementById("cursor");
@@ -14,6 +27,22 @@ const TYPE_SPEED = 100;
 const BS_SPEED = 100;
 const PAUSE_AFTER1 = 1000;
 
+// system config
+const SYSTEM_CONFIG = {
+  animSpeed: 1,
+  accentColor: "white",
+  reducedMotion: false
+};
+loadSystemSettings();
+document.documentElement.style.setProperty(
+  "--accent",
+  SYSTEM_CONFIG.accentColor
+);
+
+function ms(raw) {
+  return raw / SYSTEM_CONFIG.animSpeed;
+}
+
 // nav data
 const BIG_BOXES = [
   { symbol: "▲", label: "About Me", glitch: "Know More." },
@@ -23,7 +52,7 @@ const BIG_BOXES = [
 ];
 
 const SMALL_BOXES = [
-  { symbol: "⏹", label: "Home", glitch: "Go back.", target: showBigBoxes },
+  { symbol: "◼", label: "Home", glitch: "Go back.", target: showBigBoxes },
   {
     symbol: "▲",
     label: "About Me",
@@ -70,22 +99,23 @@ function css(el, styles) {
   Object.assign(el.style, styles);
 }
 
-function fadeOut(el, ms = 1000, cb) {
+function fadeOut(el, rawMs, cb) {
   if (!el) {
     cb?.();
     return;
   }
-  css(el, { transition: `opacity ${ms}ms ease`, opacity: 0 });
+  const duration = ms(rawMs ?? 1000);
+  css(el, { transition: `opacity ${duration}ms ease`, opacity: 0 });
   setTimeout(() => {
     el.remove();
     cb?.();
-  }, ms);
+  }, duration);
 }
 
-function fadeOutAll(els, ms = 1000, cb) {
+function fadeOutAll(els, rawMs, cb) {
   let pending = els.length;
   els.forEach((el) =>
-    fadeOut(el, ms, () => {
+    fadeOut(el, rawMs, () => {
       if (!--pending) cb?.();
     })
   );
@@ -95,7 +125,12 @@ function freshContainer(extraStyles = {}) {
   getContainer()?.remove();
   const div = document.createElement("div");
   div.id = "container-content";
-  css(div, { opacity: 0, transition: "opacity 1s ease", ...extraStyles });
+  const fadeDuration = ms(1000);
+  css(div, {
+    opacity: 0,
+    transition: `opacity ${fadeDuration}ms ease`,
+    ...extraStyles
+  });
   document.querySelector(".container").appendChild(div);
   requestAnimationFrame(() =>
     requestAnimationFrame(() => (div.style.opacity = 1))
@@ -115,25 +150,29 @@ function showLightbox(src) {
   const overlay = document.createElement("div");
   css(overlay, {
     position: "fixed",
-    top: "0", left: "0", width: "100vw", height: "100vh",
+    top: "0",
+    left: "0",
+    width: "100vw",
+    height: "100vh",
     backgroundColor: "rgba(0,0,0,0.9)",
-    display: "flex", justifyContent: "center", alignItems: "center",
-    zIndex: "100000", 
-    opacity: "0", 
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: "100000",
+    opacity: "0",
     transition: "opacity 0.5s ease",
-    cursor: "pointer" 
+    cursor: "pointer"
   });
 
   const img = document.createElement("img");
   img.src = src;
   css(img, {
-    maxWidth: "90%", maxHeight: "90%",
+    maxWidth: "90%",
+    maxHeight: "90%",
     borderRadius: "8px",
     boxShadow: "0 0 30px rgba(255,255,255,0.05)",
-    
-    transform: "scale(0.8)", 
-    
-    transition: "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)", 
+    transform: "scale(0.8)",
+    transition: "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
     objectFit: "contain"
   });
 
@@ -143,7 +182,7 @@ function showLightbox(src) {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       overlay.style.opacity = "1";
-      img.style.transform = "scale(1)"; 
+      img.style.transform = "scale(1)";
     });
   });
 
@@ -155,6 +194,7 @@ function showLightbox(src) {
 }
 
 function makeAnimatedPara(text, fontSize) {
+  const duration = ms(1000);
   const p = document.createElement("p");
   p.textContent = text;
   css(p, {
@@ -162,7 +202,8 @@ function makeAnimatedPara(text, fontSize) {
     transform: "translateY(20px)",
     fontSize,
     lineHeight: "1.5",
-    transition: "opacity 1s ease, transform 1s ease"
+    color: "var(--accent)",
+    transition: `opacity ${duration}ms ease, transform ${duration}ms ease`
   });
   return p;
 }
@@ -183,14 +224,16 @@ function createSection(title, containerStyles = {}) {
     ...containerStyles
   });
 
+  const fadeDuration = ms(1000);
   const h2 = document.createElement("h2");
   h2.textContent = title;
   css(h2, {
     fontSize: "clamp(1.5rem,3vw,2rem)",
     fontWeight: "bold",
+    color: "var(--accent)",
     opacity: "0",
     transform: "translateY(20px)",
-    transition: "opacity 1s ease, transform 1s ease"
+    transition: `opacity ${fadeDuration}ms ease, transform ${fadeDuration}ms ease`
   });
   container.appendChild(h2);
   setTimeout(() => revealEl(h2), 0);
@@ -242,9 +285,13 @@ function adjustSmallBoxLabels(labelEls) {
 
 // box factory
 function createBox(boxData, boxStyles = {}, iconStyles = {}, labelStyles = {}) {
+  const transitionDuration = ms(200);
+  const fadeDuration = ms(600);
+  const labelFadeDuration = ms(400);
+
   const boxDiv = document.createElement("div");
   css(boxDiv, {
-    border: "2px solid white",
+    border: "2px solid var(--accent)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -252,7 +299,7 @@ function createBox(boxData, boxStyles = {}, iconStyles = {}, labelStyles = {}) {
     borderRadius: "8px",
     cursor: "pointer",
     opacity: "0",
-    transition: "opacity 0.6s ease, transform 0.2s ease",
+    transition: `opacity ${fadeDuration}ms ease, transform ${transitionDuration}ms ease`,
     transformOrigin: "center",
     ...boxStyles
   });
@@ -260,16 +307,16 @@ function createBox(boxData, boxStyles = {}, iconStyles = {}, labelStyles = {}) {
   const icon = makeSpan(boxData.symbol, {
     opacity: "1",
     position: "absolute",
-    color: "white",
-    transition: "opacity 0.4s ease",
+    color: "var(--accent)",
+    transition: `opacity ${labelFadeDuration}ms ease`,
     ...iconStyles
   });
 
   const label = makeSpan(boxData.label, {
     opacity: "0",
     position: "absolute",
-    color: "white",
-    transition: "opacity 0.4s ease",
+    color: "var(--accent)",
+    transition: `opacity ${labelFadeDuration}ms ease`,
     ...labelStyles
   });
 
@@ -333,6 +380,7 @@ function showFourSmallBoxes(currentCb = null, targetWrapper = null) {
 
   const wrapper = document.createElement("div");
   wrapper.className = "small-box-wrapper";
+  const heightTransDuration = ms(600);
   css(wrapper, {
     display: "flex",
     gap: "20px",
@@ -340,7 +388,7 @@ function showFourSmallBoxes(currentCb = null, targetWrapper = null) {
     overflow: "visible",
     height: "0px",
     opacity: "0",
-    transition: "height 0.6s ease, opacity 0.6s ease"
+    transition: `height ${heightTransDuration}ms ease, opacity ${heightTransDuration}ms ease`
   });
   container.appendChild(wrapper);
 
@@ -375,14 +423,14 @@ function showFourSmallBoxes(currentCb = null, targetWrapper = null) {
       fadeOutAll([getContainer()], 500, box.target)
     );
 
-    setTimeout(() => (boxDiv.style.opacity = "1"), i * 150);
+    setTimeout(() => (boxDiv.style.opacity = "1"), ms(i * 150));
   });
 
   setTimeout(() => {
     wrapper.style.height = wrapper.scrollHeight + 20 + "px";
     wrapper.style.opacity = "1";
-    setTimeout(() => adjustSmallBoxLabels(labelEls), 50);
-  }, 50);
+    setTimeout(() => adjustSmallBoxLabels(labelEls), ms(50));
+  }, ms(50));
 }
 
 // sections
@@ -400,13 +448,16 @@ function showBigBoxes() {
   const targets = [showParagraphs, showContactInfo, showPortfolio, showGallery];
 
   BIG_BOXES.forEach((box, i) => {
+    const fadeDuration = ms(2000);
     const { boxDiv } = createBox(
       box,
       {
         width: "200px",
         height: "200px",
         borderRadius: "10px",
-        transition: "opacity 2s ease, transform 0.2s ease"
+        transition: `opacity ${fadeDuration}ms ease, transform ${ms(
+          200
+        )}ms ease`
       },
       { fontSize: "4rem" },
       { fontSize: "1.8rem" }
@@ -417,7 +468,7 @@ function showBigBoxes() {
       fadeOutAll([container], 1000, targets[i])
     );
 
-    setTimeout(() => (boxDiv.style.opacity = "1"), i * 400);
+    setTimeout(() => (boxDiv.style.opacity = "1"), ms(i * 400));
   });
 }
 
@@ -454,18 +505,233 @@ function showParagraphs() {
     appendAnimatedPara(t, "clamp(0.85rem,2.2vw,1rem)")
   );
 
-  paraEls.forEach((p, i) => setTimeout(() => revealEl(p), i * 1000 + 500));
+  paraEls.forEach((p, i) => setTimeout(() => revealEl(p), ms(i * 1000 + 500)));
 
-  const talentStart = paras.length * 1000 + 500;
+  const talentStart = ms(paras.length * 1000 + 500);
   talentEls.forEach((p, i) =>
-    setTimeout(() => revealEl(p), talentStart + i * 750)
+    setTimeout(() => revealEl(p), talentStart + ms(i * 750))
   );
 
-  const totalTime = talentStart + talents.length * 750;
+  const totalTime = talentStart + ms(talents.length * 750);
   setTimeout(
     () => showFourSmallBoxes(showParagraphs, container),
-    totalTime + 500
+    totalTime + ms(500)
   );
+}
+
+function showSettingsPage() {
+  const { container } = createSection("Settings:", { maxWidth: "450px" });
+
+  const subheading = document.createElement("p");
+  subheading.textContent = "Because you did not rush like everyone else does.";
+  css(subheading, {
+    fontSize: "0.85rem",
+    color: "var(--accent)",
+    opacity: "0.5",
+    marginBottom: "30px",
+    fontStyle: "italic",
+    lineHeight: "1.4"
+  });
+
+  const controls = [];
+
+  // settings rows helper
+  function createSettingRow(labelTxt, controlEl) {
+    const row = document.createElement("div");
+    css(row, {
+      width: "100%",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: "25px"
+    });
+    const label = document.createElement("p");
+    label.textContent = labelTxt;
+    css(label, {
+      fontSize: "0.85rem",
+      color: "var(--accent)",
+      opacity: "0.7",
+      textAlign: "left"
+    });
+    row.append(label, controlEl);
+    return row;
+  }
+
+  const speedWrapper = document.createElement("div");
+  css(speedWrapper, { width: "100%", textAlign: "left", marginBottom: "25px" });
+  const speedLabel = document.createElement("p");
+  speedLabel.textContent = `Animation Speed Multiplier: [ ${SYSTEM_CONFIG.animSpeed}x ]`;
+  css(speedLabel, {
+    marginBottom: "10px",
+    fontSize: "0.85rem",
+    color: "var(--accent)",
+    opacity: "0.7"
+  });
+
+  const speedSlider = document.createElement("input");
+  speedSlider.type = "range";
+  speedSlider.min = "0.5";
+  speedSlider.max = "4.0";
+  speedSlider.step = "0.05";
+  speedSlider.value = SYSTEM_CONFIG.animSpeed;
+  css(speedSlider, {
+    width: "100%",
+    cursor: "pointer",
+    accentColor: SYSTEM_CONFIG.accentColor
+  });
+
+  speedSlider.addEventListener("input", (e) => {
+    SYSTEM_CONFIG.animSpeed = parseFloat(e.target.value).toFixed(1);
+    speedLabel.textContent = `Animation Speed Multiplier: [ ${SYSTEM_CONFIG.animSpeed}x ]`;
+    saveSystemSettings();
+  });
+  speedWrapper.append(speedLabel, speedSlider);
+  controls.push(speedWrapper);
+
+  const motionToggle = document.createElement("button");
+  motionToggle.textContent = SYSTEM_CONFIG.reducedMotion ? "[ ON ]" : "[ OFF ]";
+  css(motionToggle, {
+    background: "none",
+    color: "var(--accent)",
+    border: "none",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontSize: "0.85rem"
+  });
+
+  motionToggle.addEventListener("click", () => {
+    SYSTEM_CONFIG.reducedMotion = !SYSTEM_CONFIG.reducedMotion;
+    motionToggle.textContent = SYSTEM_CONFIG.reducedMotion
+      ? "[ ON ]"
+      : "[ OFF ]";
+    saveSystemSettings();
+
+
+    if (SYSTEM_CONFIG.reducedMotion) {
+      if (stopBgEffect) {
+        stopBgEffect();
+        stopBgEffect = null;
+      }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    } else {
+      if (stopBgEffect) stopBgEffect();
+      stopBgEffect = BG_EFFECTS[
+        Math.floor(Math.random() * BG_EFFECTS.length)
+      ]();
+    }
+  });
+  controls.push(createSettingRow("Reduced Motion:", motionToggle));
+
+  const colorSelect = document.createElement("select");
+  css(colorSelect, {
+    background: "black",
+    color: "var(--accent)",
+    border: "1px solid rgba(255,255,255,0.3)",
+    padding: "5px 10px",
+    fontFamily: "inherit",
+    cursor: "pointer",
+    fontSize: "0.85rem"
+  });
+
+  const colors = [
+    { name: "Monochrome", hex: "#FFFFFF" },
+    { name: "Phosphor Green", hex: "#00FF41" },
+    { name: "Sunset Orange", hex: "#FFB000" },
+    { name: "Cryo Cyan", hex: "#00F0FF" },
+    { name: "Lotus Pink", hex: "#FF00FF" }
+  ];
+
+  colors.forEach((c) => {
+    const opt = document.createElement("option");
+    opt.value = c.hex;
+    opt.textContent = c.name;
+    if (c.hex === SYSTEM_CONFIG.accentColor) opt.selected = true;
+    colorSelect.appendChild(opt);
+  });
+
+  colorSelect.addEventListener("change", (e) => {
+    SYSTEM_CONFIG.accentColor = e.target.value;
+    saveSystemSettings();
+
+    document.documentElement.style.setProperty(
+      "--accent",
+      SYSTEM_CONFIG.accentColor
+    );
+
+    const cursor = document.getElementById("custom-cursor");
+    if (cursor) {
+      cursor.style.setProperty(
+        "background-color",
+        "var(--accent)",
+        "important"
+      );
+      cursor.style.setProperty("border-color", "var(--accent)", "important");
+      cursor.style.setProperty(
+        "box-shadow",
+        `0 0 10px 2px ${SYSTEM_CONFIG.accentColor}b3`,
+        "important"
+      );
+    }
+    speedSlider.style.accentColor = "var(--accent)";
+  });
+  controls.push(createSettingRow("UI Colour:", colorSelect));
+
+  const continueBtn = document.createElement("button");
+  continueBtn.textContent = "PROCEED";
+  css(continueBtn, {
+    width: "100%",
+    padding: "15px",
+    background: "rgba(255,255,255,0.05)",
+    color: "var(--accent)",
+    border: "1px solid var(--accent)",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontSize: "1rem",
+    letterSpacing: "0.2em",
+    marginTop: "15px",
+    transformOrigin: "center",
+    transition: `all ${200 / SYSTEM_CONFIG.animSpeed}ms ease`
+  });
+
+  continueBtn.addEventListener("mouseenter", () => {
+    continueBtn.style.transform = "scale(1.05)";
+  });
+  continueBtn.addEventListener("mouseleave", () => {
+    continueBtn.style.transform = "scale(1)";
+  });
+
+  continueBtn.addEventListener("click", () => {
+    fadeOutAll([container], 800 / SYSTEM_CONFIG.animSpeed, showBigBoxes);
+  });
+  controls.push(continueBtn);
+
+  const hintWrapper = document.createElement("div");
+  css(hintWrapper, { width: "100%", textAlign: "center", marginTop: "15px" });
+
+  const hintText = document.createElement("p");
+  hintText.textContent = "Also, try keys 0-4 out if on desktop.";
+  css(hintText, {
+    fontSize: "0.75rem",
+    color: "var(--accent)",
+    opacity: "0.4",
+    fontStyle: "italic"
+  });
+
+  hintWrapper.appendChild(hintText);
+  controls.push(hintWrapper);
+
+  container.appendChild(subheading);
+  controls.forEach((el) => container.appendChild(el));
+
+  [subheading, ...controls].forEach((el, i) => {
+    css(el, {
+      opacity: "0",
+      transform: "translateY(20px)",
+      transition: "opacity 0.6s ease, transform 0.6s ease"
+    });
+    setTimeout(() => revealEl(el), (i * 150 + 400) / SYSTEM_CONFIG.animSpeed);
+  });
 }
 
 function showContactInfo() {
@@ -496,7 +762,7 @@ function showContactInfo() {
     }
   ];
 
-  const navDelay = contacts.length * 1000 + 500;
+  const navDelay = ms(contacts.length * 1000 + 500);
 
   contacts.forEach((c, i) => {
     let el;
@@ -508,13 +774,14 @@ function showContactInfo() {
       el = document.createElement("p");
     }
 
+    const fadeDuration = ms(1000);
     css(el, {
       opacity: "0",
       transform: "translateY(20px)",
       lineHeight: "1.5",
       fontSize: "clamp(0.9rem,2.5vw,1.1rem)",
-      transition: "opacity 1s ease, transform 1s ease, color 0.3s ease",
-      color: "white",
+      transition: `opacity ${fadeDuration}ms ease, transform ${fadeDuration}ms ease, color 0.3s ease`,
+      color: "var(--accent)",
       textDecoration: "none",
       position: "relative"
     });
@@ -522,11 +789,11 @@ function showContactInfo() {
     if (c.clickable || c.isDiscord) {
       el.style.cursor = "pointer";
       el.addEventListener("mouseenter", () => {
-        el.style.setProperty("color", "#888888", "important");
+        el.style.setProperty("color", "rgba(136, 136, 136, 1)", "important");
         el.style.setProperty("text-decoration", "underline", "important");
       });
       el.addEventListener("mouseleave", () => {
-        el.style.setProperty("color", "white", "important");
+        el.style.setProperty("color", "var(--accent)", "important");
         el.style.setProperty("text-decoration", "none", "important");
       });
     }
@@ -537,10 +804,10 @@ function showContactInfo() {
         navigator.clipboard.writeText(c.copyTarget).then(() => {
           const original = el.textContent;
           el.textContent = "Username copied.";
-          el.style.color = "#888888";
+          el.style.color = "rgba(136, 136, 136, 1)";
           setTimeout(() => {
             el.textContent = original;
-            el.style.color = "white";
+            el.style.color = "var(--accent)";
           }, 1500);
         });
       });
@@ -549,7 +816,7 @@ function showContactInfo() {
     }
 
     container.appendChild(el);
-    setTimeout(() => revealEl(el), i * 1000);
+    setTimeout(() => revealEl(el), ms(i * 1000));
   });
 
   setTimeout(() => showFourSmallBoxes(showContactInfo, container), navDelay);
@@ -628,7 +895,7 @@ function showPortfolio() {
     width: "100%",
     marginTop: "10px",
     opacity: "0",
-    transition: "opacity 1s ease"
+    transition: `opacity ${ms(1000)}ms ease`
   });
   split.appendChild(controlsWrapper);
 
@@ -638,14 +905,18 @@ function showPortfolio() {
 
   const prevBtn = makeSpan(`[ ◄ ]`, {
     fontSize: "1.2rem",
+    color: "var(--accent)",
     transition: "color 0.3s ease"
   });
   const pageIndicator = makeSpan(`PAGE ${currentPage + 1} / ${totalPages}`, {
     fontSize: "0.9rem",
-    letterSpacing: "0.1em"
+    letterSpacing: "0.1em",
+    color: "var(--accent)",
+    opacity: "0.8"
   });
   const nextBtn = makeSpan(`[ ► ]`, {
     fontSize: "1.2rem",
+    color: "var(--accent)",
     transition: "color 0.3s ease"
   });
 
@@ -653,9 +924,11 @@ function showPortfolio() {
 
   function setupArrow(btn, direction) {
     btn.addEventListener("mouseenter", () => {
-      if (btn.style.opacity !== "0.3") btn.style.color = "gray";
+      if (btn.style.opacity !== "0.3") btn.style.opacity = "0.6";
     });
-    btn.addEventListener("mouseleave", () => (btn.style.color = "white"));
+    btn.addEventListener("mouseleave", () => {
+      if (btn.style.opacity !== "0.3") btn.style.opacity = "1";
+    });
     btn.addEventListener("click", () => {
       if (btn.style.opacity === "0.3") return;
       currentPage += direction;
@@ -685,15 +958,17 @@ function showPortfolio() {
     const currentSlice = projects.slice(start, start + ITEMS_PER_PAGE);
 
     currentSlice.forEach((proj, i) => {
+      const fadeDuration = ms(600);
       const card = document.createElement("div");
       css(card, {
-        border: "1px solid rgba(255,255,255,0.2)",
+        border: "1px solid var(--accent)",
+        opacity: "0.2",
         borderRadius: "10px",
         padding: "20px",
         background: "rgba(255,255,255,0.03)",
         opacity: "0",
         transform: "translateY(20px)",
-        transition: "opacity 0.6s ease, transform 0.6s ease",
+        transition: `opacity ${fadeDuration}ms ease, transform ${fadeDuration}ms ease`,
         width: "100%",
         boxSizing: "border-box",
         textAlign: "left",
@@ -722,16 +997,21 @@ function showPortfolio() {
 
       const titleEl = document.createElement("strong");
       titleEl.textContent = proj.title;
-      css(titleEl, { fontSize: "clamp(1rem, 4vw, 1.1rem)", lineHeight: "1.3" });
+      css(titleEl, {
+        fontSize: "clamp(1rem, 4vw, 1.1rem)",
+        lineHeight: "1.3",
+        color: "var(--accent)"
+      });
 
       const skillTag = document.createElement("span");
       skillTag.textContent = proj.skill;
       css(skillTag, {
         fontSize: "0.7rem",
         padding: "4px 10px",
-        border: "1px solid rgba(255,255,255,0.35)",
+        border: "1px solid var(--accent)",
         borderRadius: "20px",
-        color: "rgba(255,255,255,0.7)",
+        color: "var(--accent)",
+        opacity: "0.7",
         whiteSpace: "nowrap"
       });
 
@@ -742,7 +1022,8 @@ function showPortfolio() {
       css(desc, {
         fontSize: "clamp(0.85rem, 1.6vw, 0.95rem)",
         lineHeight: "1.6",
-        color: "rgba(255,255,255,0.75)"
+        color: "var(--accent)",
+        opacity: "0.75"
       });
 
       textWrapper.append(cardHeader, desc);
@@ -791,7 +1072,7 @@ function showPortfolio() {
 
       projectsPanel.appendChild(card);
 
-      const delay = isInitialLoad ? i * 1000 + 500 : i * 150 + 50;
+      const delay = isInitialLoad ? ms(i * 1000 + 500) : ms(i * 150 + 50);
       setTimeout(() => revealEl(card), delay);
     });
   }
@@ -802,14 +1083,15 @@ function showPortfolio() {
   note.textContent = "More projects will be published as they are completed.";
   css(note, {
     fontSize: "0.8rem",
-    color: "rgba(255,255,255,0.4)",
+    color: "var(--accent)",
+    opacity: "0.4",
     fontStyle: "italic",
     opacity: "0",
-    transition: "opacity 1s ease"
+    transition: `opacity ${ms(1000)}ms ease`
   });
   container.appendChild(note);
 
-  const initialAnimationTime = ITEMS_PER_PAGE * 1000 + 500;
+  const initialAnimationTime = ms(ITEMS_PER_PAGE * 1000 + 500);
   setTimeout(() => {
     controlsWrapper.style.opacity = "1";
     note.style.opacity = "1";
@@ -817,7 +1099,7 @@ function showPortfolio() {
 
   setTimeout(
     () => showFourSmallBoxes(showPortfolio, container),
-    initialAnimationTime + 1000
+    initialAnimationTime + ms(1000)
   );
 }
 
@@ -858,6 +1140,7 @@ function showGallery() {
   }
 
   function makeBox(sectionLabel, value, isLive) {
+    const fadeDuration = ms(1000);
     const box = document.createElement("div");
     css(box, {
       width: "100%",
@@ -867,7 +1150,7 @@ function showGallery() {
       background: "rgba(255,255,255,0.03)",
       opacity: "0",
       transform: "translateY(20px)",
-      transition: "opacity 1s ease, transform 1s ease",
+      transition: `opacity ${fadeDuration}ms ease, transform ${fadeDuration}ms ease`,
       display: "flex",
       flexDirection: "column",
       gap: "10px"
@@ -886,7 +1169,8 @@ function showGallery() {
       fontSize: "0.7rem",
       letterSpacing: "0.14em",
       textTransform: "uppercase",
-      color: "rgba(255,255,255,0.4)"
+      color: "var(--accent)",
+      opacity: "0.4"
     });
 
     const dot = document.createElement("span");
@@ -895,7 +1179,7 @@ function showGallery() {
       width: "7px",
       height: "7px",
       borderRadius: "50%",
-      background: "white",
+      background: "var(--accent)",
       animation: isLive ? "liveDot 1.4s ease-in-out infinite" : "none",
       opacity: isLive ? "1" : "0"
     });
@@ -905,7 +1189,7 @@ function showGallery() {
     val.textContent = value;
     css(val, {
       fontSize: "clamp(0.9rem,2vw,1rem)",
-      color: "white",
+      color: "var(--accent)",
       lineHeight: "1.4"
     });
 
@@ -924,7 +1208,7 @@ function showGallery() {
   container.appendChild(musicBox);
 
   setTimeout(() => revealEl(activityBox), 0);
-  setTimeout(() => revealEl(musicBox), 1000);
+  setTimeout(() => revealEl(musicBox), ms(1000));
 
   fetchRecentTrack((trackLabel, isLive) => {
     const valSpan = musicBox.lastElementChild;
@@ -947,7 +1231,7 @@ function showGallery() {
     }, 150);
   });
 
-  setTimeout(() => showFourSmallBoxes(showGallery, container), 2500);
+  setTimeout(() => showFourSmallBoxes(showGallery, container), ms(2500));
 }
 
 // last.fm
@@ -978,7 +1262,7 @@ function fetchRecentTrack(callback) {
 }
 
 // intro sequence
-function handleTextClick() {
+function handleTextClick(goToSettings = false) {
   if (isTransitioning) return;
   isTransitioning = true;
 
@@ -992,7 +1276,11 @@ function handleTextClick() {
     TEXT_EL.remove();
     CURSOR_EL.remove();
     setTimeout(() => {
-      showBigBoxes();
+      if (goToSettings) {
+        showSettingsPage();
+      } else {
+        showBigBoxes();
+      }
       setTimeout(() => {
         isTransitioning = false;
       }, 2000);
@@ -1019,7 +1307,9 @@ window.onload = () => {
 
   const isMobile = window.innerWidth < 768;
 
-  const skipTextWelcome = isMobile ? "Press Twice." : "Press Enter.";
+  const skipTextWelcome = isMobile
+    ? "Double Tap to Skip Intro."
+    : "Enter to Skip Intro.";
   const skipTextHowAreYou = isMobile ? "Press me." : "Click me.";
 
   setTimeout(() => {
@@ -1038,8 +1328,12 @@ window.onload = () => {
 
         backspace(MSG1.length, () => {
           typeMessage(MSG2, () => {
+            isIntroFinished = true;
+
             TEXT_EL.style.cursor = "pointer";
-            TEXT_EL.addEventListener("click", handleTextClick, { once: true });
+            TEXT_EL.addEventListener("click", () => handleTextClick(true), {
+              once: true
+            });
 
             startSubtleGlitch(TEXT_EL, MSG2, skipTextHowAreYou, 50, 2500);
           });
@@ -1068,9 +1362,9 @@ customCursor.id = "custom-cursor";
 customCursor.style.cssText = `
   position: fixed; top: 0; left: 0;
   width: 8px; height: 8px;
-  background-color: white !important;
-  border: 1px solid white !important;
-  box-shadow: 0 0 10px 2px rgba(255,255,255,0.7) !important;
+  background-color: var(--accent) !important;
+  border: 1px solid var(--accent) !important;
+  box-shadow: 0 0 10px 2px "var(--accent)", opacity: "0.7" !important;
   border-radius: 50% !important;
   pointer-events: none !important;
   z-index: 99999 !important;
@@ -1101,12 +1395,24 @@ document.addEventListener("mouseover", (e) => {
       "transparent",
       "important"
     );
-    customCursor.style.setProperty("border", "1px solid white", "important");
+    customCursor.style.setProperty(
+      "border",
+      "1px solid var(--accent)",
+      "important"
+    );
   } else {
     customCursor.style.setProperty("width", "8px", "important");
     customCursor.style.setProperty("height", "8px", "important");
-    customCursor.style.setProperty("background-color", "white", "important");
-    customCursor.style.setProperty("border", "1px solid white", "important");
+    customCursor.style.setProperty(
+      "background-color",
+      "var(--accent)",
+      "important"
+    );
+    customCursor.style.setProperty(
+      "border",
+      "1px solid var(--accent)",
+      "important"
+    );
   }
 });
 
@@ -1126,7 +1432,6 @@ document.addEventListener("mouseup", () => {
 });
 
 // background effects
-
 function animateParticlesEffect() {
   const isMobile = window.innerWidth < 768;
   const COUNT = isMobile ? 20 : 40;
@@ -1441,7 +1746,7 @@ function animateLargeClockEffect() {
       lastSecond = currentSecond;
     }
 
-    const ms = String(now.getMilliseconds()).padStart(3, "0");
+    const ms_now = String(now.getMilliseconds()).padStart(3, "0");
 
     if (cachedWidth !== canvas.width) {
       cachedWidth = canvas.width;
@@ -1470,7 +1775,7 @@ function animateLargeClockEffect() {
     ctx.font = fontSub;
     ctx.fillStyle = `rgba(255, 255, 255, ${opacity * 0.8})`;
     ctx.fillText(
-      `LOCAL SYSTEM TIME [ .${ms} ]`,
+      `LOCAL SYSTEM TIME [ .${ms_now} ]`,
       cx + offsetX,
       cy + fontSizeMain * 0.6 + offsetY
     );
@@ -1489,8 +1794,8 @@ function animateAnalogClockEffect() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const now = new Date();
-    const ms = now.getMilliseconds();
-    const s = now.getSeconds() + ms / 1000;
+    const ms_now = now.getMilliseconds();
+    const s = now.getSeconds() + ms_now / 1000;
     const m = now.getMinutes() + s / 60;
     const h = (now.getHours() % 12) + m / 60;
 
@@ -1541,19 +1846,28 @@ const BG_EFFECTS = [
   animateAnalogClockEffect
 ];
 
-let stopBgEffect = BG_EFFECTS[Math.floor(Math.random() * BG_EFFECTS.length)]();
+let stopBgEffect = null;
+if (!SYSTEM_CONFIG.reducedMotion) {
+  stopBgEffect = BG_EFFECTS[Math.floor(Math.random() * BG_EFFECTS.length)]();
+}
 
 // pause when tab is hidden, resume on return
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
-    stopBgEffect();
+    if (stopBgEffect) stopBgEffect();
   } else {
-    stopBgEffect = BG_EFFECTS[Math.floor(Math.random() * BG_EFFECTS.length)]();
+    if (!SYSTEM_CONFIG.reducedMotion) {
+      if (stopBgEffect) stopBgEffect();
+      stopBgEffect = BG_EFFECTS[
+        Math.floor(Math.random() * BG_EFFECTS.length)
+      ]();
+    }
   }
 });
 
 // keyboard nav
 let isTransitioning = false;
+let isIntroFinished = false;
 
 document.addEventListener("keydown", (e) => {
   if (isTransitioning) return;
@@ -1582,7 +1896,7 @@ document.addEventListener("keydown", (e) => {
     });
   } else if (!container) {
     if (e.key === "Enter" || e.key === " ") {
-      handleTextClick();
+      handleTextClick(isIntroFinished);
     }
   }
 });
@@ -1595,7 +1909,7 @@ document.addEventListener("touchend", (e) => {
     const tapLength = currentTime - lastTap;
 
     if (tapLength < 500 && tapLength > 0) {
-      handleTextClick();
+      handleTextClick(isIntroFinished);
       e.preventDefault();
     }
     lastTap = currentTime;
