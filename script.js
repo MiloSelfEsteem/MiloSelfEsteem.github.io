@@ -732,25 +732,32 @@ function showPortfolio() {
       image: "./images/PINESCRIPTSITE.png"
     },
     {
-      title: "MSE XAUUSD ORB — Expert Advisor",
+      title: "MSE XAUUSD ORB - Expert Advisor",
       skill: "MQL5 (C++ derivative)",
       description:
         "An automated trading bot built for MetaTrader 5, designed for fully objective, rule-based trade execution on XAUUSD. Successful in a backtesting environment, never used in a live-scenario due to lack of initial funding.",
       image: "./images/XAUUSDSITE.png"
     },
     {
-      title: "AscendUpward — Team Tool",
+      title: "AscendUpward - Team Tool",
       skill: "AutoHotkey (AHK)",
       description:
         "A real-time communication tool developed for Guild Wars 2 World vs World operations, enabling near-instant relay of tactical instructions to groups of 50+ players during high-intensity engagements.",
       image: "./images/ASCENDUPWARDSITE.png"
     },
     {
-      title: "Mic-Ro-Phone — Social Game",
+      title: "Mic-Ro-Phone - Social Game",
       skill: "LUA",
       description:
         "A voice-chat-centric social game developed in two weeks for the Roblox platform. Players could socialise, compete in mini-games, and explore an open world environment.",
       image: "./images/MICROSITE.png"
+    },
+    {
+      title: "CatClicker - Automation Tool",
+      skill: "C#",
+      description:
+        "A high-performance automation utility featuring a multi-threaded autoclicker and macro recorder. Including a '3D Mode' to bypass cursor-locking mechanics in game engines like Apex Legends or Roblox.",
+      image: "./images/CATCLICKERSITE.png"
     },
     {
       title: "L???",
